@@ -1,0 +1,366 @@
+<% extends './skins/app.html' %>
+<% subskin content %>
+<link href='http://fonts.googleapis.com/css?family=MedievalSharp' rel='stylesheet' type='text/css'>
+
+<style>
+   h1, h2 {
+      color: black;
+      background-color: rgba(0,0,0,0);
+   }
+   html{
+      color:black;
+      margin: 0px;
+      padding: 0px;
+      background: url(<% resourceHref utopia images/client/azure-sky.jpg %>) repeat;
+   }
+   body{
+      font-family: 'MedievalSharp', arial, serif;
+      line-height:1.3;
+      word-spacing:0.1em;
+      margin: 0em;
+      padding: 0px;
+   }
+   canvas {
+      margin: 0px;
+      padding: 0px;
+      border: 0px;
+   }
+
+   #canvascontainer {
+      width: 832px;
+      height: 480px;
+      margin: 20px;
+      border-width: 32px;
+      -moz-border-image: url(<% resourceHref utopia images/client/map-border.png %>) 41 repeat;
+      -webkit-border-image: url(<% resourceHref utopia images/client/map-border.png %>) 41 repeat;
+      -o-border-image: url(<% resourceHref utopia images/client/map-border.png %>) 41 repeat;
+      border-image: url(<% resourceHref utopia images/client/map-border.png %>) 41 repeat;
+   }
+
+   #buildoverlay {
+      position:absolute;
+      top: 0px;
+      left: 0px;
+      height: 120%;
+      width: 100%;
+      background: rgba(100,100,100,0.5);
+   }
+
+   #buildoverlay .goldcost {
+      color:  #737406;
+      font-weight:bold;
+      font-size:large;
+   }
+   #buildoverlay ul {
+      list-style-type:none;
+      margin: 0;
+   }
+   #buildoverlay ul li {
+      float:left;
+      font-size: normal;
+      border: 5px solid white;
+      cursor: pointer;
+      padding: 10px;
+      margin: 5px;
+      background: url(<% resourceHref utopia images/client/azure-sky.jpg %>) no-repeat;
+      height: 11.5em;
+      width: 15em;
+   }
+
+   .topdesc {
+      float:left;
+   }
+
+   #listcontainer {
+      margin: 0px 0 0 20px;
+   }
+
+   #buildoverlay ul li:hover {
+      border: 5px solid yellow;
+   }
+
+   .instructions {
+      width: 30em;
+      text-align:left;
+      margin-left: 3em;
+   }
+
+</style>
+
+<div id="canvascontainer">
+<canvas id="jsgamecanvas"></canvas>
+</div>
+
+<div id="buildoverlay" style="display:none">
+<div id="listcontainer">
+<ul>
+   <li id="unit-crop" class="unit-build-button">
+      <div class="topdesc">
+         <h3>Crop</h3>
+         <div class="goldcost">3 gold bars</div>
+      </div>
+      <p>
+      <img src="<% resourceHref utopia images/client/crop.png %>">
+      </p>
+      <p>
+         Feeds approx. 500 people. When rained upon, yields added revenue.
+         Average life of is 3 rounds.
+      </p>
+   <!--
+   <li>
+      <p>
+      <img src="/resources/utopia/images/client/dock.png">
+      </p>
+      <h3>Dock (20 gold bars)</h3>
+      <p>
+         Allows you to build fishing and patrol boats.
+      </p>
+   -->
+   <li id="unit-factory" class="unit-build-button">
+      <div class="topdesc">
+         <h3>Factory</h3>
+         <div class="goldcost">40 gold bars</div>
+      </div>
+      <img src="<% resourceHref utopia images/client/factory.png %>">
+      <p>
+         Earns at least 4 gold bars per round. Pollution increases death rate.
+      </p>
+   <li id="unit-fishing" class="unit-build-button">
+      <div class="topdesc">
+         <h3>Fishing Boat</h3>
+         <div class="goldcost">25 gold bars</div>
+      </div>
+      <img src="<% resourceHref utopia images/client/fishing.png %>">
+      <p>
+         Feeds 500 people. Earns 1 gold bar per round. If over a school of
+         fish, earns 1 extra gold bar.
+      </p>
+   <li id="unit-fort" class="unit-build-button">
+      <div class="topdesc">
+         <h3>Fort</h3>
+         <div class="goldcost">50 gold bars</div>
+      </div>
+      <img src="<% resourceHref utopia images/client/fort.png %>">
+      <p>
+         Guards surrounding land area
+         against rebels. Guards nearby fishing boats against pirates.
+      </p>
+   <li id="unit-hospital" class="unit-build-button">
+      <div class="topdesc">
+         <h3>Hospital</h3>
+         <div class="goldcost">75 gold bars</div>
+      </div>
+      <img src="<% resourceHref utopia images/client/hospital.png %>">
+      <p>
+         Increases population and greatly
+         increases factory productivity.
+      </p>
+   <li id="unit-housing" class="unit-build-button">
+      <div class="topdesc">
+         <h3>Housing</h3>
+         <div class="goldcost">60 gold bars</div>
+      </div>
+      <img src="<% resourceHref utopia images/client/housing.png %>">
+      <p>
+         Increases harmony on
+         island by providing housing for 500 people.
+      </p>
+   <li id="unit-patrol" class="unit-build-button">
+      <div class="topdesc">
+         <h3>Patrol boat</h3>
+         <div class="goldcost">40 gold bars</div>
+      </div>
+      <img src="<% resourceHref utopia images/client/patrol.png %>">
+      <p>
+         Guards your
+         fishing boat against pirates.
+      </p>
+   <li id="unit-school" class="unit-build-button">
+      <div class="topdesc">
+         <h3>School</h3>
+         <div class="goldcost">35 gold bars</div>
+      </div>
+      <img src="<% resourceHref utopia images/client/school.png %>">
+      <p>
+         Increases well-being of
+         people and productivity of factories.
+      </p>
+   </li>
+   <li>
+      <p>Close<br>build menu.</p>
+   </li>
+</ul>
+</div>
+</div>
+<br style="clear:both"/>
+
+<div class="instructions">
+<em>
+This is a remake of <a href="http://en.wikipedia.org/wiki/Utopia_%28video_game%29">Utopia (1981)</a>. All graphics, code and design are under free licenses available <a href="http://github.com/oberhamsi/gamejs-newutopia">on github</a>
+</em>
+
+<h1>NEW UTOPIA</h2>
+<p>
+If you've ever muttered, "I'd certainly do better if I ruled that
+country," then this game is for you. UTOPIA puts you in charge of
+your own island state. You control the treasury, agriculture, industry,
+housing, education, hospitals and military. You allocate funds to
+create revenue and improve life on your island. If your decisions are
+wise and the people are happy, you rack up points. If not, rebels
+begin to infiltrate your paradise. Chances are, you'll find that running
+a country is every bit as complicated as it seems.
+</p>
+
+<h2>The screen</h2>
+At the bottom right of the screen are two numbers and a smiley.
+
+The smily indicates the degree of harmony on your island. The two numbers are
+from top to bottom:
+
+<ul>
+<li>Population on island
+<li>Gold bars in treasury
+</ul>
+
+You may also see:
+
+<ul>
+<li>Rain clouds
+<li>Pirate ships
+<li>Tropical storms
+<li>Schools of fish
+<li>Hurricanes
+</ul>
+
+The computer controls these elements, which come and go at random.
+
+<h2>Governing your Island Kingdom</h2>
+<p>
+You win by accumulating POINTS, not money. Your gold bars are
+meant to be spent. Each player starts the game with 140 gold bars.
+</p>
+
+<p>
+Click on a free field on your island to open the build menu. Click
+on the building you want to build to build it. Or click ouside the builing list to close the
+build menu.
+</p>
+
+<ul>
+<li>FORT (50 gold bars). Protection: Guards surrounding land area
+against rebels. Guards nearby fishing boats against pirates and
+opponent's PT boats.
+
+<li>FACTORY (40 gold bars). Income: Earns at least 4 gold bars per
+year. (More as well-being of people increases.) Pollution increases
+death rate.
+
+<li>ACRE OF CROPS (3 gold bars). Income/Points: Each acre feeds
+approx. 500 people. When rained upon, yields added revenue
+(approx. 1 gold bar per acre). Average life of an acre of crops is 3
+years, but this number varies.
+
+<li>SCHOOL (35 gold bars). Income/Points: Increases well-being of
+people and productivity of factories.
+
+<li>HOSPITAL (75 gold bars). Increases population and greatly
+increases factory productivity.
+
+<li> HOUSING PROJECT (60 gold bars). Points: Increases harmony on
+island by housing 500 people.
+
+<li> PT BOAT (40 gold bars). Protection/Aggression: Guards your
+fishing boat against pirates. Sinks opponent's fishing boat.
+
+<li> FISHING BOAT (25 gold bars). Income/Points: Automatically feeds
+500 people and earns 1 gold bar per year. If moved over a school of
+fish, earns 1 gold bar. Can be sunk by pirates or hurricanes.
+</ul>
+
+<h2>Keep an eye on the weather</h2>
+
+<p>
+You can't control it, but you can try to anticipate it.
+</p>
+
+<p>
+RAIN STORMS help your crops grow. Try to plant where the rain
+most frequently falls. There are no set paths for rain, but you will
+notice general patterns.
+</p>
+
+<p>
+TROPICAL STORMS bring a deluge. They may either help your crops
+or destroy them. On rare occasions, they may destroy a building or
+boat.
+</p>
+
+<p>
+HURRICANES usually lay waste to everything in their paths. Fishing
+boats will be sunk if moving, but have a chance of surviving if
+anchored. Everything else over which the hurricane passes has a 2/3
+chance of being leveled. As in real life, the faster a hurricane moves,
+the less damage it inflicts.
+</p>
+
+<h2>Be on guard against rebels</h2>
+
+<p>
+If the people are not satisfied, rebels may spring up on your island.
+Your opponent can also pay to establish rebels on your island. (And
+you can do the same to your opponent.) Rebels appear at random
+points, destroying anything on which they land. Peace can be
+restored only by increasing the people's well-being. A rebel faction
+will then disappear, usually within one year.
+</p>
+
+</p>
+A FORT protects everything within a one-cursor radius around itself.
+</p>
+
+<h2>Keep your ships sailing</h2>
+
+<p>
+TO CONTROL your fishing boat or PT boat, click on it. A red border will
+surround the ship. Then click where the boat should go.
+</p>
+
+<h2>Pirates and patrol boats</h2>
+
+<ul>
+<li> A PT boat can sink opponent's fishing boat by occupying the same
+space.
+<li> PT boats can sink pirate ships.
+<li> Use a PT boat to protect a fishing boat.
+<li> PT boats can ONLY be sunk by hurricanes or tropical storms (rare).
+<li> PT boats cannot fish.
+<li> Pirates can ONLY be sunk by hurricanes or tropical storms (rare) or PT boats.
+<li> Pirates can sink fishing boats.
+</ul>
+
+<h2>How to win the governor's award</h2>
+
+<ol>
+<li>Buy a fishing boat in the first year, and hang on to it. It's the only
+income source that you can really control.
+
+<li>Get housing established early in the game, then go for a factory.
+Remember that factories cause a slow-down in population.
+
+<li>Hospitals dramatically increase productivity, but they also boost
+population. Since the point value of each individual improvement
+DECREASES as population increase, save hospital construction for late
+in the game.
+
+<li>Do your planting early in the year. Crops planted late may
+disappear as soon as the year ends.
+
+<li>Don't overplant. Crops are an unreliable source of income, since
+they depend on rain. They also require replanting.
+
+<li>Prepare for the possibility of aggression. Build your town in a
+circle with a space left in the center for a fort, so it can protect the
+entire town if necessary.
+</ol>
+
+</div>

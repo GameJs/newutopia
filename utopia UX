@@ -1,0 +1,60 @@
+for all html overlays
+--------------------------
++ click outside of overlay: close overlay
+
+click on empty ground
+-----------------
+build menu as html overlay
+info per house, always visible:
+  * building description
+  * gold
+
++ hover over to-be-built house: show house transparent in map at correct place
+
+click on house:
+-------------
+again html overlay for info & statistics:
+
+house count always displayed. plus:
+ * crops: hungry / total % (hungry percent)
+ * housing: 1 - (housing / total) % (not-housed percent)
+ * rebel soldiers: current cumulative effects
+         (-1gold OR -1birthrate)!
+
+map renderer
+-------
+fixed background water & island
+on top:
+ * units (updated by events)
+ * dynamic cursor (changed by mouse)
+   * info box
+   * build box
+   * move path
+
+island renderer
+------------
+ * constant short info on bottom:
+   * population count (updated by events)
+   * happines as smilies :) :| :((updated by events)
+ * html overlay on click on info:
+   * all buildings count
+   * optional [graph of income, pop, hunger, not housed,...]
+
+boat movement
+--------------
+click on boat -> display path
+click boat, then click a path
+   -> set path (or drag across those or smth?)
+   -> click on a path element that already exist to make a loop
+     or to end the path (if it is the last element)
+
+window hud:
+------------
+ * html: bottom of window: 1970 - 2011 timeline
+
+on end of round
+--------------
+
+highlight moving year thingie, make it bigger
+display big the amount of gold, while it changes into new value!
+short stop of all animations & some sound

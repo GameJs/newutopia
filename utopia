@@ -1,0 +1,89 @@
+fort (50)
+=======
+guard all neighbors against rebels
+(also protects ships against pt & pirates)
+
+factory (40)
+=============
++ 4 gold / round (+1 per school, +2 per hospital)
+- lifetime crop (?)
+- birth rate population
+
+crops (3)
+==========
++ feed 500 people
++ 1 gold if rained upon
+
+crop lifetime
+===============
+1-3 rounds (random?)
+
+school (35)
+==============
++ harmony 100 people
++ factory productivity
+
+hospital (75)
+==============
++ birth rate population
+++ factory productivity
+
+housing project (60)
+=====================
++ harmony 500 people
+
+rebel soliders (30)
+====================
+amount = not house + not fed people count / 1000 (?)
+random position
+bought by opponent
+destroy building where they appear
+all killed once all housed, all fed
+
+per round every soldier does damage:
+ - 1 gold
+ OR
+ - birth rate
+
+pt boat (40)
+================
+kill fishing boat
+block pirate
+
+fishing boat (25)
+==================
++ feed 500 people
++ 1 gold / round
++ 1 gold / sec over fish
+killed by pirate, pt boat, hurrican
+can anchor to have % chance to survive hurrican
+
+hurrican
+=========
+2/3 chance to kill anything else
+moving fishing boats: killed
+fast hurrican = weaker, doesn't kill on each tile
+move from random top left to random bottom right, jigger
+
+tropical storm
+================
+crop gold OR crop kill OR building/boat destory (very rare)
+move randomly, but within 2 bands of bottom & top coordinates
+
+rain clouds
+============
+crop gold
+
+pirate ship
+=============
+kill fishing boat
+blocked by pt ship
+move randomly, but towards fishing boat if 'spotted'
+
+population growth
+===================
+none if hunger
+
+schools of fish
+==================
+move about randomly, stay longer in areas where storms move
