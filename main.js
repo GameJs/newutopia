@@ -3,11 +3,14 @@ var objects = require('gamejs/utils/objects');
 
 var BuildMenu = require('./view/buildmenu').BuildMenu;
 var ShipMenu = require('./view/shipmenu').ShipMenu;
+var MainMenu = require('./view/mainmenu').MainMenu;
 var ServerWorld = require('./model').World;
 var ViewWorld = require('./view').World;
 var UNIT_TYPES = require('./model/unit').TYPES;
 var statlogger = require('./view/statlogger');
 var Hud = require('./view/hud').Hud;
+
+var touch = require('./touch');
 
 var screen = [
    832,
@@ -19,19 +22,32 @@ var worldSize = [
    Math.floor(screen[1] / cellSize[1])
 ];
 
+var hashRounds = parseInt(document.location.hash.substring(1), 10);
+
 // disable normal browser mouse select
-function disableMouseSelect() {
+function browserFixes() {
    // no text select on drag
    document.body.style.webkitUserSelect = 'none';
    // non right clickery
-   document.body.oncontextmenu = function() { return false; };
+   //document.body.oncontextmenu = function() { return false; };
+   // FIXME IEBUG CHROMEBUG
+   // very ugly hack until they fixes some of their
+   // audio bugs we disable audio completely
+   if (navigator.userAgent.indexOf('Chrome') > -1 || navigator.userAgent.indexOf('MSIE') > -1 ||
+      navigator.userAgent.indexOf('Safari') > -1) {
+      gamejs.mixer.Sound = function() {
+         return {
+            play: function() {}
+         };
+      };
+   }
 }
 
 var imgsPreload = [];
 UNIT_TYPES.forEach(function(type) {
    imgsPreload.push('images/client/' + type + '.png');
 });
-['population', 'gold', 'harmony1', 'harmony2', 'harmony3', 'map02'].forEach(function(t) {
+['year', 'population', 'gold', 'harmony1', 'harmony2', 'harmony3', 'map02'].forEach(function(t) {
    imgsPreload.push('images/client/' + t + '.png');
 });
 
@@ -44,19 +60,26 @@ gamejs.ready(main);
 
 function main() {
 
-   disableMouseSelect();
+   browserFixes();
 
+   var cellCursor = new gamejs.Rect([0,0], cellSize);
    function handleEvent(event) {
-      if (event.type === gamejs.event.MOUSE_UP &&
-            event.button === 0) {
-         var cell = viewWorld.viewToCell(event.pos);
+      if (event.type === gamejs.event.MOUSE_UP) {
+         var cell = viewWorld.eventPosToCell(event.pos);
          if (viewWorld.isIsland(cell)) {
             buildMenu.show(cell, event.pos);
          }
          if (viewWorld.isOwnShip(cell)) {
             shipMenu.show(cell);
          }
-      }
+      } else if (event.type === gamejs.event.MOUSE_MOTION) {
+         cellCursor.left = event.pos[0] - (event.pos[0] % cellSize[0]);
+         cellCursor.top = event.pos[1] - (event.pos[1] % cellSize[1]);
+      } else if (event.type === gamejs.event.KEY_UP) {
+         if (event.key === gamejs.event.K_ESC) {
+            mainMenu.show();
+         }
+      };
    };
 
    var lastIsVisible = 0;
@@ -66,6 +89,9 @@ function main() {
          shipMenu.update(msDuration);
       } else if (buildMenu.isVisible())  {
          lastIsVisible = Date.now();
+      } else if (mainMenu.isVisible()) {
+         lastIsVisible = Date.now();
+         return;
       } else if (Date.now() - lastIsVisible < 400) {
          // danger stupid, throwing away events
          gamejs.event.get().forEach(function() {});
@@ -99,19 +125,19 @@ function main() {
          serverWorld.setPath(order.unitId, order.path);
       });
 
+      // update model
       var changeset = serverWorld.update(msDuration);
-      // DEBUG
-      //if (changeset.add.length || changeset.remove.length || changeset.move.length ||
-      //      objects.keys(changeset.island).length) {
-      //   gamejs.debug('tick, changeset', JSON.stringify(changeset));
-      //}
-      // DEBUG end
-      viewWorld.patch(changeset);
-      hud.patch(changeset);
+      // FIXME don't call model so often it only updates rarely
+      if (objects.keys(changeset).length) {
+         viewWorld.patch(changeset);
+         hud.patch(changeset);
+      }
+      viewWorld.update(msDuration);
       display.clear();
       viewWorld.draw(display);
       hud.draw(display);
       shipMenu.draw(display);
+      gamejs.draw.rect(display, 'rgba(200,200,200,0.5)', cellCursor, 0);
       return;
    };
    var display = gamejs.display.setMode(screen);
@@ -123,16 +149,27 @@ function main() {
 
    gamejs.setLogLevel('debug');
    gamejs.debug('WorldSize: ', worldSize);
-   var serverWorld = new ServerWorld(worldSize);
+
+   touch.init();
+   var mainMenu = new MainMenu();
+
+   if (isNaN(hashRounds)) {
+      mainMenu.show(false);
+      hashRounds = 0;
+   } else {
+      mainMenu.hide();
+      mainMenu.reset();
+   }
+   var serverWorld = new ServerWorld(worldSize, hashRounds);
 
    var worldDump = serverWorld.serialize();
    var viewWorld = new ViewWorld(worldSize, cellSize, worldDump);
 
    var islandData = serverWorld.dataSerialize(0);
 
-   var hud = new Hud(islandData);
+   var hud = new Hud(worldDump.months, islandData);
    var buildMenu = new BuildMenu();
-   var shipMenu = new ShipMenu(viewWorld);
+   var shipMenu = new ShipMenu(viewWorld, cellCursor);
 
    var buildSound = function() { return new gamejs.mixer.Sound('sounds/client/impactfall.ogg'); };
    gamejs.time.fpsCallback(tick, this, 15);

@@ -3,19 +3,21 @@ var objects = require('gamejs/utils/objects');
 
 var findRoute = require('gamejs/pathfinding/astar').findRoute;
 
-exports.ShipMenu = function(world) {
+exports.ShipMenu = function(world, cellCursor) {
 
    var visible = false;
    var ship = null;
    var orders = [];
 
    var self = this;
+   // FIXME bug re-defined here and in main.js
+   var cellSize = [32,32];
    function handleEvent(event) {
       if (event.type === gamejs.event.MOUSE_UP) {
-         var target = world.viewToCell(event.pos);
+         var target = world.eventPosToCell(event.pos);
          var route = null;
          try {
-            route = findRoute(world.aStarMap, ship.cell, target, 800);
+            route = findRoute(world.aStarMap, ship.cell, target, 900);
          } catch (e) {
             self.moveFailSound.play();
             gamejs.debug('route exception ', e);
@@ -35,7 +37,10 @@ exports.ShipMenu = function(world) {
          }
          visible = false;
          ship = null;
-      }
+      } else if (event.type === gamejs.event.MOUSE_MOTION) {
+         cellCursor.left = event.pos[0] - (event.pos[0] % cellSize[0]);
+         cellCursor.top = event.pos[1] - (event.pos[1] % cellSize[1]);
+      };
    };
 
    this.getOrders = function() {

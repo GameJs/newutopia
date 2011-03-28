@@ -2,6 +2,7 @@
 <% subskin content %>
 <link href='http://fonts.googleapis.com/css?family=MedievalSharp' rel='stylesheet' type='text/css'>
 
+
 <style>
    h1, h2 {
       color: black;
@@ -11,10 +12,9 @@
       color:black;
       margin: 0px;
       padding: 0px;
-      background: url(<% resourceHref utopia images/client/azure-sky.jpg %>) repeat;
    }
    body{
-      font-family: 'MedievalSharp', arial, serif;
+      font-family: 'MedievalSharp', sans-serif;
       line-height:1.3;
       word-spacing:0.1em;
       margin: 0em;
@@ -24,6 +24,10 @@
       margin: 0px;
       padding: 0px;
       border: 0px;
+   }
+
+   ul {
+      list-style-type:none;
    }
 
    #canvascontainer {
@@ -37,62 +41,138 @@
       border-image: url(<% resourceHref utopia images/client/map-border.png %>) 41 repeat;
    }
 
-   #buildoverlay {
+   #logoverlay {
+      position:absolute;
+      top: 457px;
+      left: 488px;
+      height: 70px;
+      width: 400px;
+      overflow: auto;
+      line-height: 100%;
+      text-align:left;
+      background: rgba(235, 231, 193, 0.8);
+      padding: 3px;
+      margin: 0px;
+      font-size:normal;
+   }
+
+
+   .overlay {
       position:absolute;
       top: 0px;
       left: 0px;
-      height: 120%;
+      height: 50em;
       width: 100%;
       background: rgba(100,100,100,0.5);
    }
 
-   #buildoverlay .goldcost {
-      color:  #737406;
+   .overlay .goldcost {
+      color: #737406;
       font-weight:bold;
       font-size:large;
    }
-   #buildoverlay ul {
+   .overlay ul {
       list-style-type:none;
       margin: 0;
    }
-   #buildoverlay ul li {
+   .overlay ul li {
       float:left;
       font-size: normal;
       border: 5px solid white;
       cursor: pointer;
       padding: 10px;
       margin: 5px;
-      background: url(<% resourceHref utopia images/client/azure-sky.jpg %>) no-repeat;
       height: 11.5em;
       width: 15em;
+   }
+
+   .overlay ul li:hover {
+      border: 5px solid yellow;
+   }
+
+   #buildoverlay ul {
+      width: 60em;
+   }
+
+   #buildoverlay ul li{
+      background: url(<% resourceHref utopia images/client/azure-sky.jpg %>) no-repeat;
    }
 
    .topdesc {
       float:left;
    }
 
-   #listcontainer {
+   .menulistcontainer {
       margin: 0px 0 0 20px;
    }
 
-   #buildoverlay ul li:hover {
-      border: 5px solid yellow;
+   .mainmenu {
+      position:absolute;
+      left: 0px;
+      margin: 0px;
+      width: 100%;
+      height: 100%;
+      background: url(<% resourceHref utopia images/client/portlang.png %>) no-repeat;
+   }
+
+   .mainmenu h1 {
+      font-size:xx-large;
+      background: url(<% resourceHref utopia images/client/azure-sky.jpg %>) no-repeat;
+   }
+
+   .mainmenu ul {
+      width: 58em;
+      margin: 7em 0 0 0em;
+   }
+
+   .mainmenu ul li {
+      width: 15em;
+      height: 10em;
+      background: url(<% resourceHref utopia images/client/azure-sky.jpg %>) no-repeat;
+   }
+
+   #utopia-about {
+      background: url(<% resourceHref utopia images/client/azure-sky.jpg %>) no-repeat;
+   }
+
+   #utopia-pitch {
+      float:right;
+      width: 18em;
+      height: 30em;
+      margin-top: -3em;
    }
 
    .instructions {
-      width: 30em;
+      position:absolute;
+      width: 36em;
+      padding: 5px;
       text-align:left;
-      margin-left: 3em;
+      margin: 2em 0em 0 2em;
+      z-index: 500;
+      background: url(<% resourceHref utopia images/client/azure-sky.jpg %>);
+   }
+
+   button {
+      font-family: 'Geo', sans-serif;
+      font-size: large;
    }
 
 </style>
 
-<div id="canvascontainer">
+<div id="canvascontainer" style="display:none">
 <canvas id="jsgamecanvas"></canvas>
+
+<p style="margin-top:3em;">
+   Press Escape to pause the game.
+</p>
 </div>
 
-<div id="buildoverlay" style="display:none">
-<div id="listcontainer">
+<ul id="logoverlay">
+   <li></li>
+</ul>
+
+<div id="buildoverlay" class="overlay" style="display:none">
+<div class="menulistcontainer">
 <ul>
    <li id="unit-crop" class="unit-build-button">
       <div class="topdesc">
@@ -106,16 +186,6 @@
          Feeds approx. 500 people. When rained upon, yields added revenue.
          Average life of is 3 rounds.
       </p>
-   <!--
-   <li>
-      <p>
-      <img src="/resources/utopia/images/client/dock.png">
-      </p>
-      <h3>Dock (20 gold bars)</h3>
-      <p>
-         Allows you to build fishing and patrol boats.
-      </p>
-   -->
    <li id="unit-factory" class="unit-build-button">
       <div class="topdesc">
          <h3>Factory</h3>
@@ -187,59 +257,129 @@
       </p>
    </li>
    <li>
-      <p>Close<br>build menu.</p>
+      <h3>Close build menu</h3>
+      <p>
+         Build nothing and return to island.
+      </p>
+
    </li>
 </ul>
 </div>
 </div>
 <br style="clear:both"/>
 
-<div class="instructions">
-<em>
-This is a remake of <a href="http://en.wikipedia.org/wiki/Utopia_%28video_game%29">Utopia (1981)</a>. All graphics, code and design are under free licenses available <a href="http://github.com/oberhamsi/gamejs-newutopia">on github</a>
-</em>
+<div id="menuoverlay" class="overlay" style="display:none">
+<div class="menulistcontainer mainmenu">
+<ul>
+   <li id="rounds-freeplay" class="rounds-select-button">
+      <div class="topdesc">
+         <h3>Freeplay</h3>
+      </div>
+      <img src="<% resourceHref utopia images/client/infinity.png %>">
+      <p>Unlimited number of rounds
+      </p>
+   </li>
+   <li id="rounds-15" class="rounds-select-button">
+      <div class="topdesc">
+         <h3>15 Rounds</h3>
+      </div>
+      <img src="<% resourceHref utopia images/client/winner_bronze.png %>">
+      <p>Play 15 rounds. About 6 minutes play time.</p>
+   </li>
+   <li id="utopia-pitch">
+      <h1> NEW UTOPIA </h1>
+      <img src="<% resourceHref utopia images/client/gold.png %>">
+      <p>
+      Your gold bars are meant to be spent.
+      </p>
 
-<h1>NEW UTOPIA</h2>
+       <img src="<% resourceHref utopia images/client/housing.png %>">
+      <p>
+      Click on a free field on your island to open the build menu.
+      </p>
+
+<img src="<% resourceHref utopia images/client/population.png %>">
+<img src="<% resourceHref utopia images/client/harmony3.png %>">
 <p>
-If you've ever muttered, "I'd certainly do better if I ruled that
-country," then this game is for you. UTOPIA puts you in charge of
-your own island state. You control the treasury, agriculture, industry,
-housing, education, hospitals and military. You allocate funds to
-create revenue and improve life on your island. If your decisions are
-wise and the people are happy, you rack up points. If not, rebels
-begin to infiltrate your paradise. Chances are, you'll find that running
-a country is every bit as complicated as it seems.
+Keep your population happy.
 </p>
 
+
+   </li>
+   <li id="rounds-40" class="rounds-select-button">
+      <div class="topdesc">
+         <h3>40 Rounds</h3>
+      </div>
+      <img src="<% resourceHref utopia images/client/winner_silver.png %>">
+      <p>Play 40 rounds. About 16 minutes play time.</p>
+   </li>
+   <li id="rounds-80" class="rounds-select-button">
+      <div class="topdesc">
+         <h3>80 Rounds</h3>
+      </div>
+      <img src="<% resourceHref utopia images/client/winner_gold.png %>">
+      <p>Play 80 rounds. About 32 minutes play time.</p>
+   </li>
+
+   <li id="close-menu-button">
+      <h3>Back to game.</h3>
+      <p>
+      Press the Escape key at any time to return to this menu.
+      </p>
+   </li>
+</ul>
+<br style="clear:both"/>
+<div id="utopia-about">
+<em>
+This is a remake of <a href="http://en.wikipedia.org/wiki/Utopia_%28video_game%29">Utopia (1981)</a>. All graphics and code available <a href="http://github.com/gamejs/newutopia">on github</a> under free licenses. Original design by Don Daglow.
+</em>
+</div>
+</div>
+</div>
+<br style="clear:both"/>
+
+
+<div id="utopia-instructions" class="instructions" style="display:none">
+
+<h1>NEW UTOPIA HELP</h1>
+
 <h2>The screen</h2>
-At the bottom right of the screen are two numbers and a smiley.
-
-The smily indicates the degree of harmony on your island. The two numbers are
-from top to bottom:
-
+<p>
+At the bottom right of the screen are three numbers and a smiley.
+</p>
+<p>
+The smiley indicates the degree of harmony on your island. Rebels appear in low harmony situations.
+</p>
+<p>
+The three numbers are from top to bottom:
+</p>
 <ul>
-<li>Population on island
-<li>Gold bars in treasury
+<li> <img src="<% resourceHref utopia images/client/year.png %>"> Year
+<li> <img src="<% resourceHref utopia images/client/population.png %>"> Population on island
+<li> <img src="<% resourceHref utopia images/client/gold.png %>"> Gold bars in treasury
 </ul>
 
+<p>
+The text log on the bottom right informs you about notable events on your island.
+</p>
+
+<img style="width:30em" src="<% resourceHref utopia images/client/utopia-tutorial.png %>">
+
+<p>
 You may also see:
+</p>
 
 <ul>
-<li>Rain clouds
-<li>Pirate ships
-<li>Tropical storms
-<li>Schools of fish
-<li>Hurricanes
+<li><img src="<% resourceHref utopia images/client/rain.png %>">Rain clouds
+<li><img src="<% resourceHref utopia images/client/pirate.png %>"> Pirate ships
+<li><img src="<% resourceHref utopia images/client/storm.png %>"> Tropical storms
+<li><img src="<% resourceHref utopia images/client/schoolfish.png %>"> Schools of fish
+<li><img src="<% resourceHref utopia images/client/hurrican.png %>"> Hurricanes
 </ul>
 
 The computer controls these elements, which come and go at random.
 
 <h2>Governing your Island Kingdom</h2>
-<p>
-You win by accumulating POINTS, not money. Your gold bars are
-meant to be spent. Each player starts the game with 140 gold bars.
-</p>
-
 <p>
 Click on a free field on your island to open the build menu. Click
 on the building you want to build to build it. Or click ouside the builing list to close the
@@ -247,34 +387,49 @@ build menu.
 </p>
 
 <ul>
-<li>FORT (50 gold bars). Protection: Guards surrounding land area
+<li><img src="<% resourceHref utopia images/client/fort.png %>">
+<p>FORT (50 gold bars). Protection: Guards surrounding land area
 against rebels. Guards nearby fishing boats against pirates and
 opponent's PT boats.
+</p>
 
-<li>FACTORY (40 gold bars). Income: Earns at least 4 gold bars per
+<li><img src="<% resourceHref utopia images/client/factory.png %>">
+<p>FACTORY (40 gold bars). Income: Earns at least 4 gold bars per
 year. (More as well-being of people increases.) Pollution increases
 death rate.
+</p>
 
-<li>ACRE OF CROPS (3 gold bars). Income/Points: Each acre feeds
-approx. 500 people. When rained upon, yields added revenue
-(approx. 1 gold bar per acre). Average life of an acre of crops is 3
+<li><img src="<% resourceHref utopia images/client/crop.png %>">
+<p>ACRE OF CROPS (3 gold bars). Income/Points: Each acre feeds
+approx. 500 people. When rained upon, yields added revenue (approx. 1 gold bar per acre). Average life of an acre of crops is 3
 years, but this number varies.
+</p>
 
-<li>SCHOOL (35 gold bars). Income/Points: Increases well-being of
+<li><img src="<% resourceHref utopia images/client/school.png %>">
+<p>SCHOOL (35 gold bars). Income/Points: Increases well-being of
 people and productivity of factories.
+</p>
 
-<li>HOSPITAL (75 gold bars). Increases population and greatly
+<li><img src="<% resourceHref utopia images/client/hospital.png %>">
+<p>HOSPITAL (75 gold bars). Increases population and greatly
 increases factory productivity.
+</p>
 
-<li> HOUSING PROJECT (60 gold bars). Points: Increases harmony on
+<li> <img src="<% resourceHref utopia images/client/housing.png %>">
+<p>HOUSING PROJECT (60 gold bars). Points: Increases harmony on
 island by housing 500 people.
+</p>
 
-<li> PT BOAT (40 gold bars). Protection/Aggression: Guards your
+<li> <img src="<% resourceHref utopia images/client/patrol.png %>">
+<p>PT BOAT (40 gold bars). Protection/Aggression: Guards your
 fishing boat against pirates. Sinks opponent's fishing boat.
+</p>
 
-<li> FISHING BOAT (25 gold bars). Income/Points: Automatically feeds
+<li> <img src="<% resourceHref utopia images/client/fishing.png %>">
+<p>FISHING BOAT (25 gold bars). Income/Points: Automatically feeds
 500 people and earns 1 gold bar per year. If moved over a school of
 fish, earns 1 gold bar. Can be sunk by pirates or hurricanes.
+</p>
 </ul>
 
 <h2>Keep an eye on the weather</h2>
@@ -314,7 +469,7 @@ restored only by increasing the people's well-being. A rebel faction
 will then disappear, usually within one year.
 </p>
 
-</p>
+<p>
 A FORT protects everything within a one-cursor radius around itself.
 </p>
 
@@ -364,3 +519,16 @@ entire town if necessary.
 </ol>
 
 </div>
+
+ <script type="text/javascript">
+   (function() {
+     var stss = document.createElement('script');
+     stss.type = 'text/javascript';
+     stss.async = true;
+     stss.src = 'http://stats.nekapuzer.at/hit/?referer=' + escape(document.referrer) +
+          '&site=gamejs' +
+          '&random=' + (new Date()).getTime();
+     var s = document.getElementsByTagName('script')[0];
+     s.parentNode.insertBefore(stss, s);
+   })();
+   </script>

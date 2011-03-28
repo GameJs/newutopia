@@ -31,7 +31,7 @@ function Island() {
     * step month
     */
    this.nextMonth = function() {
-      var result = {remove: []};
+      var result = {remove: [], messages: []};
       var oldCount = this.populationCount;
       this.populationCount += parseInt((oldCount / 100) * this.census.birthRate, 10);
       this.populationCount -= parseInt((oldCount / 100) * this.census.deathRate, 10);
@@ -41,21 +41,36 @@ function Island() {
          u.age++;
          if (u.type === 'crop' && u.age > 25 + (10 * Math.random())) {
             result.remove.push(u);
+            result.messages.push('A Crop depleted');
             return false;
          }
          return true;
       });
+      result.island = this.dataSerialize();
       return result;
    };
+
+   function absOrNull(val) {
+      return val <= 0 ? 0 : val;
+   }
 
    /**
     * step year
     */
    this.nextYear = function() {
       // TODO influence of rebels! either less gold or less produtivity or so?
-      this.goldCount += parseInt((this.census.productivity  * this.count['factory']) + this.fishingCount +
-         (this.census.productivity * (this.census.total / 600))
-      );
+
+      // TWEAK taxes
+      var income = 3 +
+                  this.fishingCount +
+                  (this.census.productivity * this.count['factory']) +
+                  (this.census.total / 300);
+      income = Math.floor(income, 10);
+      this.goldCount += income;
+      return {
+         messages: [income + ' gold bars production income'],
+         island: this.dataSerialize()
+      };
       return;
    };
 
@@ -64,18 +79,47 @@ function Island() {
     * birthrate, deathrate per 100 per month
     */
    function getCensus() {
+
+      // TWEAK population growth and harmony
       var total = self.populationCount;
-      var unhappy = total - self.count['housing'] * 500 - self.count['school'] * 100;
-      var hungry = total - (self.count['crop'] * 500) - (self.fishingCount * 500);
-      var productivity = 4 + self.count['school'] + self.count['hospital'] * 2;
-      var harmony = 3;
-      if (unhappy > 0) harmony--;
-      if (hungry > 0) harmony--;
+      var unhappy = absOrNull(total - (self.count['housing'] * 500) - (self.count['school'] * 100));
+      var hungry = absOrNull(total - (self.count['crop'] * 500) - (self.fishingCount * 500))
+      var productivity = 2 + self.count['school'] + (self.count['hospital'] * 1.5);
+      var harmony = 2;
+      var percentHarmony = 1;
+      if (unhappy + hungry > 0) {
+         percentHarmony = (unhappy + hungry) / (total * 2);
+         if (percentHarmony > 0.6) {
+            harmony -= 2;
+         } else if (percentHarmony > 0.4) {
+            harmony -= 1;
+         }
+      }
+
+      var deathrate = 3;
+      if (hungry > 0) {
+         deathrate += (hungry / 100);
+      }
+      if (unhappy > 0) {
+         deathrate += (unhappy / 200);
+      }
+      if (unhappy <= 0 && hungry <= 0) {
+         deathrate -= 0.5;
+      }
+      var birthRate = 3;
+      birthRate += self.count['hospital'];
+      birthRate -= self.count['factory'];
+      if (percentHarmony > 0.9) {
+         birthRate += 2;
+      } else if (percentHarmony > 0.8) {
+         birthRate += 1;
+      }
+
       // TODO: productivity should influence harmony, but how?
       return {
          total: self.populationCount,
-         birthRate: 3 + 2 * (self.count['hospital'] - self.count['factory']),
-         deathRate: 3 + (hungry / 100) + (unhappy / 200),
+         birthRate: birthRate,
+         deathRate: deathrate,
          unhappy: unhappy,
          hungry: hungry,
          productivity: productivity,
@@ -111,7 +155,9 @@ function Island() {
       return {
          harmony: this.census.harmony,
          gold: this.goldCount,
-         population: this.populationCount
+         population: this.populationCount,
+         birthRate: this.census.birthRate,
+         deathRate: this.census.deathRate
       }
    };
 
@@ -197,6 +243,7 @@ function Island() {
    };
 
    var self = this;
+   // TWEAK
    this.populationCount = 100;
    this.goldCount = 140;
    // HACK fishing count (they are units of world)

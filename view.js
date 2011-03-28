@@ -1,5 +1,7 @@
 var gamejs = require('gamejs');
 var objects = require('gamejs/utils/objects');
+var $v = require('gamejs/utils/vectors');
+
 var UNIT_TYPES = require('./model/unit').TYPES;
 exports.World = World;
 
@@ -12,21 +14,39 @@ function World(worldSize, cellSize, worldDump) {
    this.draw = function(display) {
       display.blit(background);
       var rect = new gamejs.Rect([0,0], this.getCellSize());
-      var pos;
-      // sort rain stuff on top
-      units = units.sort(function(a, b) {
-         if (['storm', 'rain', 'hurrican'].indexOf(a.type) > -1) return 1;
-         return -1;
-      });
       units.forEach(function(u) {
-         pos = cellToView(u.cell);
-         rect.left = pos[0];
-         rect.top = pos[1];
+         rect.left = u.pos[0];
+         rect.top = u.pos[1];
+         u.image.setAlpha(0);
+         if (u.alpha !== undefined && ['rain', 'storm', 'hurrican'].indexOf(u.type) > -1) {
+            var a = u.alpha;
+            if (a > 0.8) {
+               a = 0.2 - (0.8 - a);
+            } else {
+               a = 0;
+            }
+            u.image.setAlpha(a);
+         }
          display.blit(u.image, rect);
       });
-      /// TODO
-      // draw timeline & year changes animation
+   };
 
+   this.update = function(msDuration) {
+      units.forEach(function(u) {
+         if (!u.pos) u.pos = cellToView(u.cell);
+         if (!u.targetCell) return;
+
+         u.pos = [
+            u.pos[0] + (u.delta.x * (msDuration / 1000)),
+            u.pos[1] + (u.delta.y * (msDuration / 1000))
+         ];
+         u.cell = this.viewToCell(u.pos);
+         // stop movement once we are close enough
+         if (Math.abs(u.pos[0] - (u.targetCell[0] * cellSize[0])) < 3 &&
+               Math.abs(u.pos[1] - (u.targetCell[1] * cellSize[1])) < 3) {
+            u.targetCell = null;
+         }
+      }, this);
    };
 
    this.getCellSize = function() {
@@ -42,18 +62,36 @@ function World(worldSize, cellSize, worldDump) {
          units.push({
             id: u.id,
             image: UNIT_IMAGES[u.type],
-            cell: u.cell,
+            cell: u.cell.slice(0),
             type: u.type
          });
       }, this);
+
+      // sort rain on top, fish on bottom
+      if (changeset.add) {
+         units = units.sort(function(a, b) {
+            if (a.type === b.type) {
+               return a.id < b.id ? -1 : 1;
+            }
+            if (['storm', 'rain', 'hurrican'].indexOf(a.type) > -1 &&
+                  (['storm', 'rain', 'hurrican'].indexOf(b.type) > -1)) {
+               return a.id < b.id ? -1 : 1;
+            }
+            if (['storm', 'rain', 'hurrican'].indexOf(a.type) > -1) return 1;
+            if (['storm', 'rain', 'hurrican'].indexOf(b.type) > -1) return -1;
+            if (['schoolfish', 'dock'].indexOf(a.type) > -1) return -1;
+            if (['schoolfish', 'dock'].indexOf(b.type) > -1) return 1;
+            return a.id < b.id ? -1 : 1;
+         });
+      }
+
       if (changeset.remove) {
          units = units.filter(function(unit) {
             var doRemove = changeset.remove.some(function(u) {
                return u.id === unit.id;
             });
             if (['fort', 'factory', 'housing', 'crop', 'school', 'hospital', 'dock',
-               'fishing', 'patrol'].indexOf(unit.type) > -1 &&
-               doRemove) {
+               'fishing', 'patrol'].indexOf(unit.type) > -1 && doRemove) {
                self.removeSound.play();
             }
             return !doRemove;
@@ -62,7 +100,22 @@ function World(worldSize, cellSize, worldDump) {
       changeset.move.forEach(function(u) {
          units.some(function(unit) {
             if (unit.id === u.id) {
-               unit.cell = u.cell;
+               // finish previous cell
+               if (unit.targetCell) {
+                  unit.cell = unit.targetCell.slice(0);
+               }
+               unit.targetCell = u.cell;
+               var speed = $v.divide(cellSize, u.speed);
+               var delta = $v.substract(unit.targetCell, unit.cell);
+               // make it a little bit to slow so the view is never
+               // fast then the model
+               unit.delta = {
+                  x: speed[0] * delta[0] * 0.9,
+                  y: speed[1] * delta[1] * 0.9
+               };
+               unit.pos = cellToView(unit.cell);
+               // weather gets more transparent
+               unit.alpha = u.pathProgress;
                var pmFn = postMove[unit.type];
                if (pmFn) pmFn(unit);
                return true;
@@ -71,13 +124,6 @@ function World(worldSize, cellSize, worldDump) {
          });
       });
       return;
-   };
-
-   function getUnit(cell) {
-      var us = units.filter(function(u) {
-         return u.id === cell[id] && u.id !== notId;
-      });
-      var result = us.length > 0 ? us[0] : null;
    };
 
    var self = this;
@@ -138,20 +184,27 @@ function World(worldSize, cellSize, worldDump) {
 
    this.viewToCell = function(pos) {
       return [
-         parseInt(pos[0] / cellSize[0], 10),
-         parseInt(pos[1] / cellSize[1], 10)
+         Math.round(pos[0] / cellSize[0]),
+         Math.round(pos[1] / cellSize[1])
       ];
    };
 
+   this.eventPosToCell = function(pos) {
+      return [
+         Math.floor(pos[0] / cellSize[0]),
+         Math.floor(pos[1] / cellSize[1])
+      ];
+   }
+
    var DIRS = [
-      //[-1,-1],
-      //[1,1],
-      //[-1,1],
-      //[1,-1]
       [-1,0],
       [0,-1],
       [1,0],
       [0,1],
+      [-1,-1],
+      [1,1],
+      [-1,1],
+      [1,-1]
    ];
    /**
     * aStarMap interface for astar searchs
@@ -187,6 +240,9 @@ function World(worldSize, cellSize, worldDump) {
    var UNIT_IMAGES = {};
    UNIT_TYPES.forEach(function(type) {
       UNIT_IMAGES[type] = gamejs.image.load('images/client/' + type + '.png');
+      if(['storm', 'rain', 'hurrican'].indexOf(type) > -1) {
+         UNIT_IMAGES[type].setAlpha(0.2);
+      }
    });
 
    var months = worldDump.months;
@@ -194,7 +250,8 @@ function World(worldSize, cellSize, worldDump) {
    var units = worldDump.units.map(function(u) {
       return {
             image: UNIT_IMAGES[u.type],
-            cell: u.cell
+            cell: u.cell,
+            type: u.type
          };
    });
    var background = gamejs.image.load('images/client/map02.png');

@@ -20,16 +20,25 @@ exports.World = World;
 /**
  * World
  */
-function World(size) {
+function World(size, maxRounds) {
 
    var islands = [];
    var units = [];
    var monthMs = 0;
+
+   var freeplay = false;
    var months = 0;
+   if (maxRounds === 0) {
+      freeplay = true;
+   } else {
+      months = (maxRounds * 12) + 12;
+   }
 
    /**
     */
    this.update = function(msDuration) {
+      if (!freeplay && months === 0) return {};
+
       monthMs += msDuration;
 
       var results = [];
@@ -38,7 +47,11 @@ function World(size) {
       var monthChanged = false;
       var yearChanged = false;
       if (monthMs >= MONTH_MS) {
-         months++;
+         if (freeplay) {
+            months++;
+         } else {
+            months--;
+         }
          monthMs = 0;
          monthChanged = true;
          gamejs.debug('World.update: month', months);
@@ -48,10 +61,8 @@ function World(size) {
       }
 
       // create weather
-      if (monthChanged && months && months % 5 === 0) {
-         for (var i=0;i<3;i++) {
-            results.push(this.add('weather'));
-         }
+      if (monthChanged && months && months % 2 === 0) {
+         results.push(this.add('weather'));
       }
       // create pirates
       if (monthChanged && months && months % 8 === 0) {
@@ -84,14 +95,18 @@ function World(size) {
          if (monthChanged) {
             var res = i.nextMonth();
             results.push(res);
-
          };
          if (yearChanged) {
             var res = i.nextYear();
             results.push(res);
             if (i.census.unhappy > 0) {
-               for (var j =0; j < parseInt( (i.census.unhappy - 250) / 150, 10); j++) {
+               // TWEAK rebel spawn
+               var rebelCount = (i.census.unhappy + i.census.hungry - 100) / 150;
+               for (var j =0; j < rebelCount; j++) {
                   results.push(this.add('rebel', islandIdx));
+               }
+               if (rebelCount > 0) {
+                  results.push({messages: ['Rebel alarm!']});
                }
             }
             // DEBUG
@@ -99,20 +114,14 @@ function World(size) {
          }
       }, this);
 
-      // send island status
-      if (monthChanged || yearChanged) {
-         results.push({island:
-            islands[0].dataSerialize()
-         });
-      }
-
       // merge results
       var finalResults = {
          months: months,
          add: [],
          remove: [],
          island: {},
-         move: []
+         move: [],
+         messages: []
       };
       results.forEach(function(r) {
          if (r) {
@@ -131,8 +140,16 @@ function World(size) {
                   finalResults.island[key] = r.island[key];
                });
             }
+            if (r.messages) {
+               finalResults.messages = finalResults.messages.concat(r.messages);
+            }
          }
-      })
+      });
+      // serialize units
+      ['add', 'remove', 'move'].forEach(function(key) {
+         if (!finalResults[key]) return;
+         finalResults[key] = finalResults[key].map(function(u) { return u.serialize(); });
+      });
       return finalResults;
    }; // end update
 
@@ -142,6 +159,7 @@ function World(size) {
    this.add = function(type, islandIdx, cell) {
       var island = islands[islandIdx];
 
+      // TWEAK costs
       var cost = {
             crop: 3,
             factory: 40,
@@ -162,14 +180,12 @@ function World(size) {
 
       var unit = null;
       if (type === 'weather') {
-         // random type
-         // random speed
-         // random path
+         // TWEAK weather
          var rnd = Math.random();
          var realType = 'rain';
          if (rnd < 0.1) {
             realType = 'storm';
-         } else if (rnd > 0.95) {
+         } else if (rnd > 0.97) {
             realType = 'hurrican';
          }
          var speed = 2 + parseInt(Math.random() * 3, 10);
@@ -181,7 +197,7 @@ function World(size) {
          unit.path = this.randomPath(unit.cell, 5);
       } else if (type === 'pirate') {
          unit = new MoveableUnit(type, this.randomCell('right'), 2);
-         unit.path = this.randomPath(unit.cell, 12);
+         unit.path = this.randomPath(unit.cell, 18);
       } else if (type === 'rebel') {
          unit = new MoveableUnit(type, island.randomCell(), 10);
          unit.path = island.randomPath(unit.cell, 2);
@@ -192,6 +208,8 @@ function World(size) {
          island.fishingCount += 1;
          unit.islandIdx = islandIdx;
       }
+
+      // construct result object
       var result = null;
       if (unit) {
          units.push(unit);
@@ -249,11 +267,14 @@ function World(size) {
          var unit = getUnit(w.cell, w.id);
          if (!unit) return null;
          var result = {
-            remove: []
+            remove: [],
+            messages: []
          };
          if (unit.type === 'crop') {
             var island = getIsland(w.cell);
             island.goldCount += 1;
+            result.island = island.dataSerialize();
+            result.messages.push('1 gold bar crop revenue from rain');
          }
          return result;
       },
@@ -261,7 +282,8 @@ function World(size) {
          var unit = getUnit(w.cell, w.id);
          if (!unit) return null;
          var result = {
-            remove: []
+            remove: [],
+            messages: []
          };
          var island = getIsland(w.cell);
          // storm over crop
@@ -270,18 +292,31 @@ function World(size) {
             if (Math.random() < 0.25) {
                killUnit(unit);
                result.remove.push(unit);
+               result.messages.push('Crop lost in storm');
             } else {
                island.goldCount += 1;
+               result.island = island.dataSerialize();
+               result.messages.push('1 gold bar crop revenue from rain');
             }
-         } else if (unit.type === 'fishing') {
+         } else if (['fishing', 'patrol'].indexOf(unit.type) > -1) {
             if (Math.random() < 0.5) {
                killUnit(unit);
+               if (unit.type === 'fishing') {
+                  // HACK fishing count
+                  var island = islands[unit.islandIdx];
+                  island.fishingCount -= 1;
+               }
                result.remove.push(unit);
+               var type = unit.type === 'fishing' ? 'Fishing boat' : 'Patrol boat';
+               result.messages.push(type + ' lost in storm');
             }
-         } else if (unit) {
+         } else if (unit && ['fort', 'factory', 'housing', 'crop',
+            'school', 'hospital'].indexOf(unit.type) > -1) {
             if (Math.random() < 0.01) {
                killUnit(unit);
                result.remove.push(unit);
+               var type = unit.type.charAt(0).toUpperCase() + unit.type.slice(1);
+               result.messages.push(type + ' lost in storm');
             }
          }
          return result;
@@ -290,17 +325,31 @@ function World(size) {
          var unit = getUnit(w.cell, w.id);
          if (!unit) return null;
          var result = {
-            remove: []
+            remove: [],
+            messages: []
          };
          // fishing boats: killed (unless anchored, then 2/3)
          // 2/3 chance to kill anything else
          if (unit.type === 'fishing') {
             killUnit(unit);
+            // HACK fishing count
+            var island = islands[unit.islandIdx];
+            island.fishingCount -= 1;
             result.remove.push(unit);
-         } else if (unit) {
+            result.messages.push('Fishing boat lost in hurricane');
+         } else if (unit.type === 'patrol') {
             if (Math.random() < 0.75) {
                killUnit(unit);
                result.remove.push(unit);
+               result.messages.push('Patrol boat lost in hurricane');
+            }
+         } else if (['fort', 'factory', 'housing', 'crop',
+            'school', 'hospital'].indexOf(unit.type) > -1) {
+            if (Math.random() < 0.8) {
+               killUnit(unit);
+               result.remove.push(unit);
+               var type = unit.type.charAt(0).toUpperCase() + unit.type.slice(1);
+               result.messages.push(type + ' lost in hurrican');
             }
          }
          return result;
@@ -310,6 +359,8 @@ function World(size) {
          var unit = getUnit(r.cell, r.id);
          if (!unit) return null;
 
+         if (['fort', 'factory', 'housing', 'crop',
+            'school', 'hospital'].indexOf(unit.type) === -1) return;
          var neighborForts = DIRS.map(function(d) {
             return [
                r.cell[0] + d[0],
@@ -321,9 +372,12 @@ function World(size) {
             return u && u.type === 'fort';
          });
          if (neighborForts.length > 0) return null;
+
          killUnit(unit);
+         var type = unit.type.charAt(0).toUpperCase() + unit.type.slice(1);
          return {
-            remove: unit
+            remove: unit,
+            messages: [type + ' destroyed by rebels']
          }
       },
       pirate: function(p) {
@@ -337,12 +391,14 @@ function World(size) {
             island.fishingCount -= 1;
             killUnit(unit);
             return {
-               remove: unit
+               remove: unit,
+               messages: ['Fishing boat destroyed by pirate ship']
             }
          } else if (unit.type === 'patrol') {
             killUnit(p);
             return {
-               remove: p
+               remove: p,
+               messages: ['Pirate ship destroyed by your patrol boat']
             }
          }
          return null;
@@ -355,7 +411,8 @@ function World(size) {
          if (unit.type === 'pirate') {
             killUnit(unit);
             return {
-               remove: unit
+               remove: unit,
+               messages: ['Pirate ship destroyed by patrol boat']
             }
          }
          return null;
@@ -368,11 +425,15 @@ function World(size) {
          if (unit.type === 'schoolfish') {
             var island = islands[f.islandIdx];
             island.goldCount += 1;
-            return {'island': island.dataSerialize()};
+            return {
+               island: island.dataSerialize(),
+               messages: ['1 gold bar extra fish income']
+            };
          }
          return null;
       },
       schoolfish: function(f) {
+         return /*
          // fish over boat -> extra gold
          var unit = getUnit(f.cell, f.id);
          if (!unit) return null;
@@ -380,8 +441,12 @@ function World(size) {
          if (unit.type === 'fishing') {
             var island = islands[unit.islandIdx];
             island.goldCount += 1;
-            return {'island': island.dataSerialize()};
+            return {
+               island: island.dataSerialize(),
+               messages: ['1 gold bar extra fish income']
+            };
          }
+         */
          return null;
       }
 
@@ -415,7 +480,7 @@ function World(size) {
             cell[0] = 1;
          } else if (area === 'weatherbottom') {
             cell[0] = 3 + parseInt(Math.random() * size[0] / 3, 10);
-            cell[1] = size[1] - 1;
+            cell[1] = size[1];
          }
       }
       return cell;

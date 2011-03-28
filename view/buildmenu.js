@@ -8,7 +8,16 @@ exports.BuildMenu = function() {
 
    this.show = function(cell, pos) {
       buildCell = cell;
-      $('buildoverlay').style.display = 'block';
+      // FIXME ugly
+      // delay show on ipad so the event opening it does not propagate to the
+      // build menu
+      if (navigator.userAgent.indexOf('iPad') > -1) {
+         setTimeout(function() {
+            $('buildoverlay').style.display = 'block';
+         }, 300);
+      } else {
+            $('buildoverlay').style.display = 'block';
+      }
    };
    this.hide = function(cell, pos) {
       $('buildoverlay').style.display = 'none';

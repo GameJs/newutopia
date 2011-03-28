@@ -1,0 +1,6 @@
+ * rotate the sprites in moving direction (might be super ugly?)
+ * perlin noise random (hard)
+    * island form
+    * weather & pirate & fish spawn side
+    * dock position
+ * save game in browser (easy. i would do this in a cookie kind of way but html5)

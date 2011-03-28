@@ -26,7 +26,7 @@ function Unit(opts) {
       return {
          id: this.id,
          cell: this.cell,
-         type: this.type,
+         type: this.type
       }
    };
    for (var key in opts) {
@@ -48,7 +48,7 @@ function MoveableUnit(type, cell, speed) {
       if (this.path == null) return false;
 
       moveMs += msDuration;
-      if (moveMs > speed * UNIT_MOVE_MS) {
+      if (moveMs > this.speed * UNIT_MOVE_MS) {
          if (this.path && this.path.length && ((revert && moveIdx <= 0) || (!revert && moveIdx >= this.path.length-1))) {
             if (['fishing', 'patrol'].indexOf(this.type) > -1) {
                return false;
@@ -76,6 +76,8 @@ function MoveableUnit(type, cell, speed) {
          cell: this.cell,
          type: this.type,
          path: this.path,
+         speed: this.speed,
+         pathProgress: moveIdx / (this.path.length - 1)
       }
    };
 
@@ -85,7 +87,7 @@ function MoveableUnit(type, cell, speed) {
       moveMs = 0;
    };
 
-   var speed = speed || 1;
+   this.speed = speed || 1;
    var moveMs = 0;
    var moveIdx = 0;
    this.cell = cell;
